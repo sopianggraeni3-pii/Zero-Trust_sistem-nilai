@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "Tugas praktikum Zero Trust: API Gateway (PEP) + Policy Engine + Service Nilai + Service Transkrip",
   "private": true,
-  "engines": { "node": ">=22.13" },
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
     "start": "node run-all.js",
     "seed": "node --disable-warning=ExperimentalWarning seed.js --reset",
