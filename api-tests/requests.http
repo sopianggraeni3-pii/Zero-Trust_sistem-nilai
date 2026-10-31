@@ -1,0 +1,229 @@
+### Sistem Nilai - Zero Trust (ekstensi VS Code: "REST Client" oleh Huachao Mao)
+### Cara pakai: jalankan server (npm start), lalu klik "Send Request" di atas tiap baris "###".
+### Jalankan bagian LOGIN lebih dulu supaya token tersimpan otomatis.
+
+@gw = http://localhost:3000
+@nilai = http://localhost:3001
+@transkrip = http://localhost:3002
+@nim1 = 09021282025001
+@nim2 = 09021282025002
+
+############ 1. AUTENTIKASI ############
+
+### Login mhs1
+# @name loginMhs1
+POST {{gw}}/auth/login
+Content-Type: application/json
+X-Device-ID: DEV-MHS1-01
+
+{ "username": "mhs1", "password": "mhs123" }
+
+###
+@tokenMhs1 = {{loginMhs1.response.body.access_token}}
+@refreshMhs1 = {{loginMhs1.response.body.refresh_token}}
+
+### Login dosen1
+# @name loginDosen1
+POST {{gw}}/auth/login
+Content-Type: application/json
+X-Device-ID: DEV-DOSEN1-01
+
+{ "username": "dosen1", "password": "dosen123" }
+
+###
+@tokenDosen1 = {{loginDosen1.response.body.access_token}}
+
+### Login dosen2
+# @name loginDosen2
+POST {{gw}}/auth/login
+Content-Type: application/json
+X-Device-ID: DEV-DOSEN2-01
+
+{ "username": "dosen2", "password": "dosen123" }
+
+###
+@tokenDosen2 = {{loginDosen2.response.body.access_token}}
+
+### Login admin
+# @name loginAdmin
+POST {{gw}}/auth/login
+Content-Type: application/json
+X-Device-ID: DEV-ADMIN-01
+
+{ "username": "admin", "password": "admin123" }
+
+###
+@tokenAdmin = {{loginAdmin.response.body.access_token}}
+
+### Login mhs1 dengan device SALAH (harus 403)
+POST {{gw}}/auth/login
+Content-Type: application/json
+X-Device-ID: DEV-MHS2-01
+
+{ "username": "mhs1", "password": "mhs123" }
+
+### Login mhs1 dengan password SALAH (harus 401)
+POST {{gw}}/auth/login
+Content-Type: application/json
+X-Device-ID: DEV-MHS1-01
+
+{ "username": "mhs1", "password": "salah" }
+
+### Token service
+# @name svc
+POST {{gw}}/auth/service
+Content-Type: application/json
+
+{ "client_id": "service-nilai", "client_secret": "dev-service-client-secret" }
+
+###
+@tokenService = {{svc.response.body.access_token}}
+
+### Token service dengan secret SALAH (harus 401)
+POST {{gw}}/auth/service
+Content-Type: application/json
+
+{ "client_id": "service-nilai", "client_secret": "salah" }
+
+### Refresh token mhs1 (200)
+POST {{gw}}/auth/refresh
+Content-Type: application/json
+
+{ "refresh_token": "{{refreshMhs1}}" }
+
+### Logout mhs1 - mencabut refresh token (200)
+POST {{gw}}/auth/logout
+Content-Type: application/json
+
+{ "refresh_token": "{{refreshMhs1}}" }
+
+### Refresh setelah logout (harus 401)
+POST {{gw}}/auth/refresh
+Content-Type: application/json
+
+{ "refresh_token": "{{refreshMhs1}}" }
+
+############ 2. NILAI ############
+
+### mhs1 lihat nilai sendiri (200)
+GET {{gw}}/nilai
+Authorization: Bearer {{tokenMhs1}}
+X-Device-ID: DEV-MHS1-01
+
+### mhs1 lihat nilai NIM lain (403)
+GET {{gw}}/nilai?nim={{nim2}}
+Authorization: Bearer {{tokenMhs1}}
+X-Device-ID: DEV-MHS1-01
+
+### mhs1 memakai device milik mhs2 (403)
+GET {{gw}}/nilai
+Authorization: Bearer {{tokenMhs1}}
+X-Device-ID: DEV-MHS2-01
+
+### Tanpa token (401)
+GET {{gw}}/nilai
+X-Device-ID: DEV-MHS1-01
+
+### dosen1 lihat kelas 1 - diampu (200)
+GET {{gw}}/nilai?kelas_id=1
+Authorization: Bearer {{tokenDosen1}}
+X-Device-ID: DEV-DOSEN1-01
+
+### dosen1 lihat kelas 2 - bukan miliknya (403)
+GET {{gw}}/nilai?kelas_id=2
+Authorization: Bearer {{tokenDosen1}}
+X-Device-ID: DEV-DOSEN1-01
+
+### admin lihat nilai (403)
+GET {{gw}}/nilai
+Authorization: Bearer {{tokenAdmin}}
+X-Device-ID: DEV-ADMIN-01
+
+### mhs1 ubah nilai (403)
+PUT {{gw}}/nilai/1
+Authorization: Bearer {{tokenMhs1}}
+X-Device-ID: DEV-MHS1-01
+Content-Type: application/json
+
+{ "nilai_angka": 100 }
+
+### dosen2 ubah nilai kelas milik dosen1 (403)
+PUT {{gw}}/nilai/1
+Authorization: Bearer {{tokenDosen2}}
+X-Device-ID: DEV-DOSEN2-01
+Content-Type: application/json
+
+{ "nilai_angka": 100 }
+
+### dosen1 ubah nilai kelasnya (200 jika dalam jam akses)
+PUT {{gw}}/nilai/1
+Authorization: Bearer {{tokenDosen1}}
+X-Device-ID: DEV-DOSEN1-01
+Content-Type: application/json
+
+{ "nilai_angka": 90 }
+
+### dosen1 FINALISASI kelas 1 (200, hanya bisa sekali)
+POST {{gw}}/kelas/1/finalisasi
+Authorization: Bearer {{tokenDosen1}}
+X-Device-ID: DEV-DOSEN1-01
+
+### dosen1 ubah nilai setelah final (409)
+PUT {{gw}}/nilai/1
+Authorization: Bearer {{tokenDosen1}}
+X-Device-ID: DEV-DOSEN1-01
+Content-Type: application/json
+
+{ "nilai_angka": 50 }
+
+############ 3. TRANSKRIP ############
+
+### mhs1 lihat transkrip sendiri (200)
+GET {{gw}}/transkrip/{{nim1}}
+Authorization: Bearer {{tokenMhs1}}
+X-Device-ID: DEV-MHS1-01
+
+### mhs1 lihat transkrip NIM lain (403)
+GET {{gw}}/transkrip/{{nim2}}
+Authorization: Bearer {{tokenMhs1}}
+X-Device-ID: DEV-MHS1-01
+
+### admin lihat transkrip semua NIM (200)
+GET {{gw}}/transkrip/{{nim2}}
+Authorization: Bearer {{tokenAdmin}}
+X-Device-ID: DEV-ADMIN-01
+
+### dosen1 lihat transkrip (403)
+GET {{gw}}/transkrip/{{nim1}}
+Authorization: Bearer {{tokenDosen1}}
+X-Device-ID: DEV-DOSEN1-01
+
+### Sinkron dengan token dosen (403 - hanya token service)
+POST {{gw}}/transkrip/sinkron
+Authorization: Bearer {{tokenDosen1}}
+X-Device-ID: DEV-DOSEN1-01
+Content-Type: application/json
+
+{}
+
+### Sinkron dengan token service (200)
+POST {{gw}}/transkrip/sinkron
+Authorization: Bearer {{tokenService}}
+Content-Type: application/json
+
+{ "kelas_id": 2, "kode": "IF70045002", "nama": "Basis Data", "sks": 3,
+  "entries": [ { "nim": "09021282025001", "nilai_angka": 72 } ] }
+
+### Token service mengakses /nilai (403)
+GET {{gw}}/nilai
+Authorization: Bearer {{tokenService}}
+
+############ 4. BYPASS GATEWAY (harus ditolak oleh service) ############
+
+### Langsung ke Service Nilai tanpa X-Gateway-Secret (403)
+GET {{nilai}}/nilai
+Authorization: Bearer {{tokenMhs1}}
+
+### Langsung ke Service Transkrip tanpa X-Gateway-Secret (403)
+GET {{transkrip}}/transkrip/{{nim1}}
+Authorization: Bearer {{tokenMhs1}}

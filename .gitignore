@@ -1,0 +1,22 @@
+# Dependensi Node.js
+node_modules/
+
+# File log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# File environment/kredensial rahasia (jika Anda menggunakan .env)
+.env
+.env.local
+
+# File database lokal 
+# (Sebaiknya tidak di-commit karena asisten/dosen akan men-generate ulang lewat seed.js)
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+
+# File OS (macOS/Windows)
+.DS_Store
+Thumbs.db
