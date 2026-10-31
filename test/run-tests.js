@@ -1,5 +1,4 @@
 // Tes end-to-end: menjalankan seluruh sistem pada port & database sementara, lalu menguji kebijakan.
-// Jalankan: npm test
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
